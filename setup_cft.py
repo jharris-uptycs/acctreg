@@ -40,9 +40,15 @@ def gen_api_headers(key, secret):
     }
     return req_header
 
-def gen_api_url(domain, domainSuffix, customer_id):
+def gen_cloudaccounts_api_url(domain, domainSuffix, customer_id):
     uptycs_api_url = f"https://{domain}{domainSuffix}/public/api/customers/{customer_id}/cloudAccounts"
     return uptycs_api_url
+
+
+def gen_cloudtrail_api_url(domain, domainSuffix, customer_id):
+    uptycs_api_url = f"https://{domain}{domainSuffix}/public/api/customers/{customer_id}/cloudTrailBuckets"
+    return uptycs_api_url
+
 
 def get_uptycs_internal_id(url, req_header, account_id):
     params = {"hideServices": "true", "hideSideQuery": "false", "minimalInfo": "true"}
@@ -51,6 +57,37 @@ def get_uptycs_internal_id(url, req_header, account_id):
         if item['tenantId'] == account_id:
             return item['id']
 
+def account_cloudtrail_handler(api_config_file, bucket_name, bucket_region):
+    with open(api_config_file) as api_config_file:
+        uptycs_api_params = json.load(api_config_file)
+    account_id = get_account_id()
+    # uptycs_api_params = get_ssm_parameter(UPTYCS_API_PARAMETER_STORE)
+    domain = uptycs_api_params.get('domain')
+    domainSuffix = uptycs_api_params.get('domainSuffix')
+    customer_id = uptycs_api_params.get('customerId')
+    key = uptycs_api_params.get('key')
+    secret = uptycs_api_params.get('secret')
+    req_header = gen_api_headers(key, secret)
+    uptycs_api_url = gen_cloudtrail_api_url(domain, domainSuffix, customer_id)
+    response_data = {}
+    try:
+        req_payload = {
+              "tenantId": account_id,
+              "bucketName": bucket_name,
+              "bucketRegion": bucket_region,
+              "bucketPrefix": None
+            }
+        status, response = http_post(uptycs_api_url, req_header, req_payload)
+        if status == 200:
+            response = f"Successfully added cloudtrail {account_id}"
+            return status, response
+
+        else:
+            print('Failed to add cloudtrail ')
+            return status, response['error']['message']['detail']
+    except Exception as error:
+        response(f"Error during create event {error}")
+        return status, response
 
 def account_registration_handler(action, api_config_file, role_name, external_id=None):
     with open(api_config_file) as api_config_file:
@@ -64,7 +101,7 @@ def account_registration_handler(action, api_config_file, role_name, external_id
     secret = uptycs_api_params.get('secret')
     role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
     req_header = gen_api_headers(key, secret)
-    uptycs_api_url = gen_api_url(domain, domainSuffix, customer_id)
+    uptycs_api_url = gen_cloudaccounts_api_url(domain, domainSuffix, customer_id)
 
     response_data = {}
 
@@ -78,10 +115,7 @@ def account_registration_handler(action, api_config_file, role_name, external_id
                     "accessConfig": {
                         "role_arn": role_arn,
                         "external_id": external_id
-                    },
-                    "cloudMonitoring": {
-                        "cloudTrailBucketId": "aws-controltower-logs-004881111746-eu-west-1"
-                    },
+                    }
                 }
                 status, response = http_post(uptycs_api_url, req_header, req_payload)
                 if status == 200:
@@ -342,6 +376,8 @@ def main():
                         default='uptycs_apikey_file')
     parser.add_argument('--ctbucket',
                         help='OPTIONAL: The Name of the CloudTrail bucket')
+    parser.add_argument('--ctregion',
+                        help='OPTIONAL: The Name of the CloudTrail bucket')
     parser.add_argument('--accountname',
                         help='OPTIONAL: The name you want to identify this account with on Uptycs console')
 
@@ -356,6 +392,8 @@ def main():
     ssmparam = args.ssmparam
     accountname = args.accountname
     permboundary = args.permboundary
+    ctbucket = args.ctbucket
+    ctregion = args.ctregion
 
     # Check if --arn argument is provided
     if accountname is None:
@@ -444,6 +482,8 @@ def main():
             status, response = account_registration_handler(action, api_config_file, rolename,
                                                       external_id)
             print(response)
+            print("Adding Cloudtrail config ...")
+            account_cloudtrail_handler(api_config_file, ctbucket, ctregion)
 
 
         else:
