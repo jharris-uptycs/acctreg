@@ -377,9 +377,11 @@ def main():
     parser.add_argument('--ctbucket',
                         help='OPTIONAL: The Name of the CloudTrail bucket')
     parser.add_argument('--ctregion',
-                        help='OPTIONAL: The Name of the CloudTrail bucket')
+                        help='OPTIONAL: The Name of the CloudTrail bucket region')
     parser.add_argument('--accountname',
                         help='OPTIONAL: The name you want to identify this account with on Uptycs console')
+    parser.add_argument('--kmsarn',
+                        help='OPTIONAL: The KMS Arn if required')
 
     # Parse the arguments
     args = parser.parse_args()
@@ -394,6 +396,7 @@ def main():
     permboundary = args.permboundary
     ctbucket = args.ctbucket
     ctregion = args.ctregion
+    kmsarn = args.kmsarn
 
     # Check if --arn argument is provided
     if accountname is None:
@@ -471,6 +474,18 @@ def main():
             {
                 "ParameterKey": "PermissionsBoundary",
                 "ParameterValue": permboundary,
+                "UsePreviousValue": False,
+                "ResolvedValue": "string"
+            },
+            {
+                "ParameterKey": "CloudTrailBucketName",
+                "ParameterValue": ctbucket,
+                "UsePreviousValue": False,
+                "ResolvedValue": "string"
+            },
+            {
+                "ParameterKey": "KMSKeyArn",
+                "ParameterValue": kmsarn,
                 "UsePreviousValue": False,
                 "ResolvedValue": "string"
             }

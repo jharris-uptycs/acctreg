@@ -5,22 +5,28 @@
             "config": {
                 "ignore_checks": [
                     "E9008"
-                ],
-                "ignore_reasons": {
-                    "E9008": "No QSID for this template"
-                }
+                ]
             }
         },
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
                 {
                     "Label": {
-                        "default": "AWS Related Configuration"
+                        "default": "Uptycs Role Parameters"
                     },
                     "Parameters": [
-                        "UptycsAccountId",
+                        "ExternalId",
                         "UptycsRoleName",
-                        "ExternalId"
+                        "UptycsAccountId"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Log Archive Parameters"
+                    },
+                    "Parameters": [
+                        "KMSKeyArn",
+                        "CloudTrailBucketName"
                     ]
                 },
                 {
@@ -31,27 +37,34 @@
                         "PermissionsBoundary"
                     ]
                 }
-            ]
-        },
-        "ParameterLabels": {
-            "UptycsAccountId": {
-                "default": "The Uptycs Account from which the role is assumed (Only change for dev testing)"
-            },
-            "UptycsRoleName": {
-                "default": "The Uptycs RoleName that will assume the role (Only change for dev testing)"
-            },
-            "ExternalId": {
-                "default": "The ExternalId used by Uptycs to Assume this role"
-            },
-            "PermissionsBoundary": {
-                "default": "The name of the permisssions boundary to apply to IAM roles"
+            ],
+            "ParameterLabels": {
+                "UptycsAccountId": {
+                    "default": "The Uptycs Account from which the role is assumed (Only change for dev testing)"
+                },
+                "UptycsRoleName": {
+                    "default": "The Uptycs RoleName that will assume the role (Only change for dev testing)"
+                },
+                "ExternalId": {
+                    "default": "The ExternalId used by Uptycs to Assume this role"
+                },
+                "PermissionsBoundary": {
+                    "default": "The name of the permisssions boundary to apply to IAM roles"
+                },
+                "CloudTrailBucketName": {
+                    "default": "The cloudtrail bucket name normally aws-controltower-xxxx"
+                },
+                "KMSKeyArn": {
+                    "default": "Add the SSE-KMS Arn if using KMS encryption.  Leave blank if using SSE-S3"
+                }
             }
         }
     },
     "Parameters": {
         "UptycsAccountId": {
             "Description": "Aws account id of Uptycs",
-            "Type": "String"
+            "Type": "String",
+            "Default": "031552911331"
         },
         "ExternalId": {
             "Description": "ExternalId to be used for API authentication.",
@@ -59,11 +72,20 @@
         },
         "UptycsRoleName": {
             "Type": "String",
-            "Description": "Name for Uptycs CSPM Reader Role"
+            "Description": "Name for Uptycs CSPM Reader Role",
+            "Default": "UptycsIntegrationRole1"
+        },
+        "CloudTrailBucketName": {
+            "Type": "String",
+            "Description": "Name of your cloudtrail bucket"
+        },
+        "KMSKeyArn": {
+            "Description": "SSE-KMS Arn .",
+            "Default": "",
+            "Type": "String"
         },
         "PermissionsBoundary": {
             "Type": "String",
-            "Description": "Leave blank if no permissions boundary required",
             "Default": ""
         }
     },
@@ -79,23 +101,24 @@
                     ]
                 }
             ]
+        },
+        "KMSDecryptKey": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "KMSKeyArn"
+                        },
+                        ""
+                    ]
+                }
+            ]
         }
     },
     "Resources": {
         "UptycsIntegrationRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
-                "PermissionsBoundary": {
-                    "Fn::If": [
-                        "PermissionsBoundary",
-                        {
-                            "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:policy/${PermissionsBoundary}"
-                        },
-                        {
-                            "Ref": "AWS::NoValue"
-                        }
-                    ]
-                },
                 "RoleName": {
                     "Ref": "UptycsRoleName"
                 },
@@ -103,11 +126,10 @@
                     "Version": "2012-10-17",
                     "Statement": [
                         {
-                            "Effect": "Allow",
                             "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
                             "Principal": {
-                                "AWS": "arn:aws:iam::031552911331:user/AWS-API-User-PROD"
-
+                                "Ref": "UptycsAccountId"
                             },
                             "Condition": {
                                 "StringEquals": {
@@ -126,79 +148,63 @@
                     {
                         "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/SecurityAudit"
                     }
-                ],
-                "Policies": [
-                    {
-                        "PolicyName": "UptycsReadOnlyPolicy",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
+                ]
+            }
+        },
+        "UptycsAccessPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "UptycsAccessPolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:ListBucket"
+                            ],
+                            "Resource": [
                                 {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "apigateway:GET",
-                                        "codebuild:ListProjects",
-                                        "codebuild:BatchGetProjects",
-                                        "codecommit:GetBranch",
-                                        "codecommit:GetCommit",
-                                        "codecommit:GetRepository",
-                                        "codepipeline:GetPipeline",
-                                        "codepipeline:ListTagsForResource",
-                                        "ds:ListTagsForResource",
-                                        "ec2:DescribeAccountAttributes",
-                                        "ec2:GetEbsEncryptionByDefault",
-                                        "ec2:SearchTransitGatewayRoutes",
-                                        "ec2:GetTransitGatewayMulticastDomainAssociations",
-                                        "eks:DescribeAddon",
-                                        "eks:DescribeCluster",
-                                        "eks:DescribeFargateProfile",
-                                        "eks:DescribeIdentityProviderConfig",
-                                        "eks:DescribeNodegroup",
-                                        "eks:DescribeUpdate",
-                                        "eks:ListAddons",
-                                        "eks:ListClusters",
-                                        "eks:ListFargateProfiles",
-                                        "eks:ListIdentityProviderConfigs",
-                                        "eks:ListNodegroups",
-                                        "eks:ListTagsForResource",
-                                        "eks:ListUpdates",
-                                        "elasticache:ListTagsForResource",
-                                        "es:ListTags",
-                                        "glacier:DescribeJob",
-                                        "glacier:DescribeVault",
-                                        "glacier:GetDataRetrievalPolicy",
-                                        "glacier:GetJobOutput",
-                                        "glacier:GetVaultAccessPolicy",
-                                        "glacier:GetVaultLock",
-                                        "glacier:GetVaultNotifications",
-                                        "glacier:ListJobs",
-                                        "glacier:ListTagsForVault",
-                                        "glacier:ListVaults",
-                                        "kinesis:DescribeStream",
-                                        "logs:FilterLogEvents",
-                                        "ram:GetResourceShares",
-                                        "ram:ListResources",
-                                        "s3:GetIntelligentTieringConfiguration",
-                                        "secretsmanager:DescribeSecret",
-                                        "servicecatalog:DescribePortfolio",
-                                        "servicecatalog:DescribeProductAsAdmin",
-                                        "servicecatalog:DescribeProvisioningArtifact",
-                                        "servicecatalog:DescribeServiceAction",
-                                        "servicecatalog:SearchProductsAsAdmin",
-                                        "sns:GetSubscriptionAttributes",
-                                        "sns:GetTopicAttributes",
-                                        "sns:ListSubscriptionsByTopic",
-                                        "sns:ListTagsForResource",
-                                        "sns:ListTopics",
-                                        "sqs:GetQueueAttributes",
-                                        "sqs:ListQueueTags",
-                                        "sqs:ListQueues",
-                                        "ssm:ListCommandInvocations"
-                                    ],
-                                    "Resource": "*"
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${CloudTrailBucketName}/*"
+                                },
+                                {
+                                    "Fn::Sub": "arn:${AWS::Partition}:s3:::${CloudTrailBucketName}"
                                 }
                             ]
                         }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "UptycsIntegrationRole"
+                    }
+                ]
+            }
+        },
+        "UptycsKMSDecryptPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Condition": "KMSDecryptKey",
+            "Properties": {
+                "PolicyName": "DecryptPolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "DecryptLogFiles",
+                            "Action": [
+                                "kms:Decrypt"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Ref": "KMSKeyArn"
+                            }
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "UptycsIntegrationRole"
                     }
                 ]
             }
