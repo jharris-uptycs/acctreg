@@ -207,24 +207,6 @@ def wait_for_stack_creation(cf_client, stack_id):
 def gen_external_id():
     return str(uuid.uuid4())
 
-def check_ssm_param_exists(param_name):
-    ssm_client = boto3.client('ssm')
-    try:
-        response = ssm_client.get_parameter(Name=param_name)
-        print(f"Parameter '{param_name}' exists.")
-        return True
-    except ssm_client.exceptions.ParameterNotFound:
-        print(f"Parameter '{param_name}' does not exist.")
-        return False
-
-def write_dict_to_ssm(secret_name, data):
-    ssm_client = boto3.client('ssm')
-    response = ssm_client.put_parameter(
-        Name=secret_name,
-        Value=json.dumps(data),
-        Type='SecureString',
-        Overwrite=True
-    )
 
 def get_account_id():
     sts_client = boto3.client('sts')
@@ -273,21 +255,6 @@ def get_external_id_from_trust_relationship(role_name):
         pass
 
     return None
-
-def get_ssm_parameter(parameter_name: str, with_decrypt: bool = True) -> object:
-    """
-    Retrieve a JSON object from an SSM parameter.
-    Args:
-        parameter_name (str): The name of the SSM parameter.
-        with_decrypt (bool): Parameter requires Decryption. Default is True.
-
-    Returns:
-        Dict: A dictionary containing the JSON object stored in the SSM parameter.
-    """
-    ssm_client = boto3.client('ssm')
-    response = ssm_client.get_parameter(Name=parameter_name, WithDecryption=with_decrypt)
-    parameter_value = response['Parameter']['Value']
-    return json.loads(parameter_value)
 
 
 def remove_illegal_characters(input_string):
@@ -380,7 +347,11 @@ def main():
                         help='OPTIONAL: The Name of the CloudTrail bucket region')
     parser.add_argument('--accountname',
                         help='OPTIONAL: The name you want to identify this account with on Uptycs console')
-    parser.add_argument('--kmsarn',
+    parser.add_argument('--kmsarn', default='',
+                        help='OPTIONAL: The KMS Arn if required')
+    parser.add_argument('--ctaccount', default='',
+                        help='OPTIONAL: The KMS Arn if required')
+    parser.add_argument('--ctprefix', default='',
                         help='OPTIONAL: The KMS Arn if required')
 
     # Parse the arguments
@@ -396,6 +367,8 @@ def main():
     permboundary = args.permboundary
     ctbucket = args.ctbucket
     ctregion = args.ctregion
+    ctaccount = args.ctaccount
+    ctprefix = args.ctprefix
     kmsarn = args.kmsarn
 
     # Check if --arn argument is provided
@@ -419,19 +392,14 @@ def main():
             print(f"Found a valid CloudTrail logging to a bucket {bucket}")
         else:
             print(f"No valid CloudTrail exists")
-
-
-        if check_ssm_param_exists(ssmparam):
-            print(f'The API parameters file {ssmparam} already exists')
-
-        else:
-            try:
-                with open(args.config) as api_config_file:
-                    data = json.load(api_config_file)
-                    # write_dict_to_ssm(ssmparam, data)
-            except FileNotFoundError:
-                print("File not found check the location of the apikey file: ", args.config)
-                sys.exit(0)
+        print(f"Checking for api credentials file {api_config_file}")
+        try:
+            with open(args.config) as api_config_file:
+                data = json.load(api_config_file)
+                # write_dict_to_ssm(ssmparam, data)
+        except FileNotFoundError:
+            print("File not found check the location of the apikey file: ", args.config)
+            sys.exit(0)
 
 
 
@@ -448,6 +416,18 @@ def main():
         uptycs_account_id = UPTYCS_ACCOUNT_ID
         external_id = gen_external_id()
         uptycs_role_name = rolename
+        print(f"Checking if role {rolename} already exists")
+        role_exists = check_for_existing_role(args.rolename)
+        if check_stack_exists(STACK_NAME):
+            print(f"Found existing CloudFormation stack with Stack Name {STACK_NAME} \n You "
+                  f"should rerun the script with --action Delete")
+
+        if role_exists:
+            external_id = get_external_id_from_trust_relationship(rolename)
+            print(f"Found and existing role with name {rolename} and externalId {external_id}")
+            sys.exit(0)
+        else:
+            print(f"Role {rolename} does not currently exist...continuing")
         # Create the Uptycs Read Only Role StackSet for member accounts
         with open(TEMPLATE_FILE) as template_file:
             template_data = json.load(template_file)
