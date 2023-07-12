@@ -84,7 +84,7 @@ def delete_stack(stack_name):
         print(f"Failed to delete stack '{stack_name}': {e.response['Error']['Message']}")
 
 
-def create_cft_stack(stack_name: str, template_data: str, params: list[dict]):
+def create_cft_stack(stack_name: str, template_data: str, params: list):
     """
     Create a CloudFormation stack.
 
