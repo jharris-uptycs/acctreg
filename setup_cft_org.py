@@ -16,6 +16,7 @@ Functions:
 - main(): Parses command-line arguments and performs actions on the CloudFormation stack.
 """
 import argparse
+import os
 import json
 import time
 import sys
@@ -23,8 +24,20 @@ import boto3
 import botocore
 
 TEMPLATE_FILE = "./cloudformation/master-acct.json"
-STACK_NAME = 'uptycs-ct-master'
+STACK_NAME = 'Uptycs-Integration-Setup-Stack'
 
+def delete_file(file_path):
+    """
+    :param filename:
+    :type filename:
+    :return:
+    :rtype:
+    """
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print(f"File '{file_path}' deleted.")
+    else:
+        print(f"File '{file_path}' does not exist.")
 
 def check_file_open(filename):
     """
@@ -300,6 +313,8 @@ def main():
         except IOError:
             print(f"Error opening file '{TEMPLATE_FILE}'.")
         create_cft_stack(STACK_NAME, json.dumps(template_data), cft_params)
+        print(f"Deleting api config file..../n")
+        delete_file(args.config)
 
     elif action == 'Check':
         print(f"\nChecking for required files....")
@@ -323,8 +338,8 @@ def main():
                   f"--ctprefix {trail_data['S3KeyPrefix']} "
                   f"--ctregion {region}")
         else:
-            print(f"\nNo org wide trail found in this account \n"
-                  f"You may have suitable trails already setup.\n"
+            print(f"\nNo org wide trail found in this account. "
+                  f"You may have suitable trails already setup. "
                   f"Check the logging account for your CloudTrail configuration")
 
     # No trail found, handle this case
