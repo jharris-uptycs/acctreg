@@ -90,11 +90,10 @@ optional arguments:
                         from Uptycs console
   --rolename ROLENAME   OPTIONAL: The Name of the IAM role that you will
                         create
-  --ctaccount CTACCOUNT
-                        Cloudtrail account
-  --ctbucket CTBUCKET   The Name of the CloudTrail bucket
-  --ctprefix CTPREFIX   The CloudTrail log prefix
-  --ctregion CTREGION   The Name of the CloudTrail bucket region
+  --ctaccount CTACCOUNT REQUIRED: Cloudtrail account
+  --ctbucket CTBUCKET   REQUIRED: The Name of the CloudTrail bucket
+  --ctprefix CTPREFIX   OPTIONAL: The CloudTrail log prefix 
+  --ctregion CTREGION   REQUIRED: The Name of the CloudTrail bucket region
   --permboundary PERMBOUNDARY
                         OPTIONAL: Permissions boundary policy to apply to the
                         role
@@ -147,7 +146,6 @@ o-m74320exxx --ctregion eu-west-1
 ```
 
 
-
 2) Register Orgnanization `--action Create`
 
 The script performs the following 
@@ -156,21 +154,6 @@ The script performs the following
 - Checks the stack does not exist
 - Loads the cloudformation stack
 
-**Mandatory arguments**
-
---config <path_to_api_config_file> 
---action Create 
---ctaccount <log_archive_account_number> 
---ctbucket <cloudtrail_bucket> 
---ctprefix <cloudtrail_log_prefix> 
---ctregion <cloudtrail_region
-
-**Optional arguments**
-
---rolename <Uptycs_rolename>
---permboundary <permissions_boundary_policy_name>
---existingaccts <apply_IAM_Role_to_existing_accounts>
---
 ```
 python3 setup_cft_org.py --config <path_to_api_config_file> --action Create --ctaccount 
 <log_archive_account_number> --ctbucket <cloudtrail_bucket> --ctprefix <cloudtrail_log_prefix> 
@@ -179,26 +162,11 @@ python3 setup_cft_org.py --config <path_to_api_config_file> --action Create --ct
 
 3)  Delete Registation
 
-Before running the delete option you will need to remove any current stack instances from the 
-following stacksets
-
-**Uptycs-Integration-StackSet**
-
-<img src='./images/acct_stackset.png' width='600'>
-
-**Uptycs-Log-Archive-Integration-StackSet**
-
-<img src='./images/log_archive_stackset.png' width='600'>
-
-```
-python3 setup_cft_org.py --config <path_to_api_config_file> --action Delete
-```
-
-Delete the cloudformation stack `
+Delete the cloudformation stack in the master account
 
 **Uptycs-Integration**
 
-Finally run the following command
+Run the following command
 ```
 python3 setup_cft_org.py --config <path_to_api_config_file> --action Delete
 ```
