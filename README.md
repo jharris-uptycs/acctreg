@@ -6,9 +6,71 @@ A collection of scripts to help with setting up Uptycs CSPM
 
 The script is designed to help with setup of Uptycs CSPM in a Control Tower environment. 
 
-See https://github.com/Uptycs/aws-control-tower for more information
+See [Control Tower](./Documentation/aws-control-tower/README.md) for more information
+
+## Prerequisites
+
+### Create your Uptycs API credential file
+In your Uptycs Console, navigate to **Settings** -> **Users** -> **Create User** 
+Select **Is Bot** and add the **Assets** group to the users
+Add the "Admin" permissions to the role or create a custom role
+https://cloudint.uptycs.io/help/docs/contents/configuration/system/roles#default-roles
+Select **Save**
+
+
+<img src='./images/uptycs-api-creds.png' width='600'>
+
+
+### Create the CloudShell environment
+
+Open a CloudShell environment in the region where you have ControlTower Setup
+
+
+<img src='./images/cloud_shell.png' width='600'>
+
+
+### Install Required Python Modules
+
+```text
+pip3 install -r ./acctreg/requirements.txt
+```
+
+<img src='./images/python_setup.png' width='600'>
+
+### Clone the repository
+
+```text
+git clone https://github.com/jharris-uptycs/acctreg.git
+```
+
+
+<img src='./images/uptycs-api-creds.png' width='600'>
+
+
+### Upload the API Credentials File
+
+
+<img src='./images/file_upload.png' width='600'>
+
+
+### Move the file to the acctreg directory
+
+```text
+mv <api-key-file> ./acctreg
+```
+
+### Change  acctreg directory
+
+```text
+cd ./acctreg
+```
+
 
 ## Usage
+
+[!NOTE]  
+Execute the commands from the acctreg directory
+
 
 ```
 $ python3 setup_cft_org.py -h
@@ -91,7 +153,7 @@ o-m74320exxx --ctregion eu-west-1
 The script performs the following 
 - Checks for the required template file
 - Checks for a valid api credentials file
-- Checks tha stack does not exist
+- Checks the stack does not exist
 - Loads the cloudformation stack
 
 **Mandatory arguments**
