@@ -1,0 +1,865 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "cfn-lint": {
+            "config": {
+                "ignore_checks": [
+                    "E9008"
+                ],
+                "ignore_reasons": {
+                    "E9008": "No QSID for this template"
+                }
+            }
+        },
+        "AWS::CloudFormation::Interface": {
+            "ParameterLabels": {
+                "UptycsSecretName": {
+                    "default": "The ARN of the secret created by QuickLaunch"
+                },
+                "UptycsAccountId": {
+                    "default": "The uptycs account that will assume the role created"
+                },
+                "UptycsRoleName": {
+                    "default": "The name of the Role that Uptycs will assume in your account"
+                },
+                "PermissionsBoundary": {
+                    "default": "The name of the permissions boundary to apply to IAM roles"
+                },
+                "CloudTrailBucketName": {
+                    "default": "The cloudtrail bucket name normally aws-controltower-xxxx"
+                },
+                "CloudTrailBucketRegion": {
+                    "default": "The region where cloudtrail bucket is located eg us-east-1"
+                },
+                "CloudTrailBucketLogPrefix": {
+                    "default": "The prefix (if any) for your cloudtrail logs "
+                },
+                "CloudTrailAccount": {
+                    "default": "The 12 digit aws account number containing the S3 bucket"
+                },
+                "KMSKeyArn": {
+                    "default": "Add the SSE-KMS Arn if using KMS encryption.  Leave blank if using SSE-S3"
+                },
+                "UptycsStackSetName": {
+                    "default": "The Name of the Uptycs StackSet that will be created"
+                },
+                "ExistingAccounts": {
+                    "default": "Select yes to create a stack instance in all existing accounts"
+                },
+                "S3BucketName": {
+                    "default": "The S3 bucket containing Uptycs Source files"
+                },
+                "S3KeyPrefix": {
+                    "default": "The S3 bucket prefix for the source files"
+                }
+            },
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Uptycs API Permissions"
+                    },
+                    "Parameters": [
+                        "UptycsSecretName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Log Archive Account Parameters"
+                    },
+                    "Parameters": [
+                        "CloudTrailAccount",
+                        "CloudTrailBucketName",
+                        "CloudTrailBucketRegion",
+                        "CloudTrailBucketLogPrefix",
+                        "KMSKeyArn"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS Related Configuration"
+                    },
+                    "Parameters": [
+                        "UptycsAccountId",
+                        "UptycsRoleName",
+                        "PermissionsBoundary"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Stackset Related Information"
+                    },
+                    "Parameters": [
+                        "UptycsStackSetName",
+                        "ExistingAccounts"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Source file bucket Parameters (Change of self hosting)"
+                    },
+                    "Parameters": [
+                        "S3BucketName",
+                        "S3KeyPrefix"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "UptycsSecretName": {
+            "Description": "The Secert in the format arn:aws:secretsmanager:<region>:<account>:secret:<secret>",
+            "Type": "String"
+        },
+        "UptycsAccountId": {
+            "Description": "Aws account id of Uptycs",
+            "Type": "String",
+            "Default": "031552911331"
+        },
+        "UptycsRoleName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Description": "S3 bucket name for the Uptycs Moonwalk assets. This string can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String",
+            "Default": "UptycsIntegrationRole"
+        },
+        "S3BucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "Type": "String",
+            "Description": "Name of the zip file bucket",
+            "Default": "uptycs-cloud-integrations-test"
+        },
+        "S3KeyPrefix": {
+            "Type": "String",
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Uptycs Moonwalk bucket key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Description": "S3 key prefix for the Uptycs Moonwalk assets. Uptycs Moonwalk key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "uptycs-ct-quicklaunch"
+        },
+        "UptycsStackSetName": {
+            "Type": "String",
+            "Description": "The StackSet name",
+            "Default": "Uptycs-Integration-StackSet"
+        },
+        "ExistingAccounts": {
+            "Type": "String",
+            "Description": "Add Stack Instance to each existing account in the org",
+            "Default": "No",
+            "AllowedValues": [
+                "Yes",
+                "No"
+            ]
+        },
+        "CloudTrailAccount": {
+            "Type": "String",
+            "Description": "Account number Eg 123456789012"
+        },
+        "CloudTrailBucketName": {
+            "Type": "String",
+            "Description": "Name of your cloudtrail bucket"
+        },
+        "CloudTrailBucketRegion": {
+            "Type": "String",
+            "Description": "Cloudtrail bucket region"
+        },
+        "CloudTrailBucketLogPrefix": {
+            "Type": "String",
+            "Description": "Example o-xxxxxxxxx"
+        },
+        "KMSKeyArn": {
+            "Description": "SSE-KMS Arn .",
+            "Default": "",
+            "Type": "String"
+        },
+        "PermissionsBoundary": {
+            "Description": "The name of the permission boundary for all roles created by this template.",
+            "Type": "String",
+            "Default": ""
+        }
+    },
+    "Conditions": {
+        "PermissionsBoundary": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "PermissionsBoundary"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "UptycsRegistrationLambda": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": [
+                "UptycsSetupCustomResource"
+            ],
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Sub": "${S3KeyPrefix}/lambda/UptycsRegistrationHandler-0.0.1.zip"
+                    }
+                },
+                "Environment": {
+                    "Variables": {
+                        "UPTYCS_SECRET_STORE": {
+                            "Ref": "UptycsSecretName"
+                        }
+                    }
+                },
+                "Handler": "uptycs_account_registration.lambda_handler",
+                "Runtime": "python3.7",
+                "Timeout": 500,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "UptycsAccountFunctionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "RegisterAcct": {
+            "DependsOn": "UptycsSetupCustomResource",
+            "Type": "Custom::UptycsRegistration",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "UptycsRegistrationLambda",
+                        "Arn"
+                    ]
+                },
+                "role_name": {
+                    "Ref": "UptycsRoleName"
+                },
+                "ctaccount": {
+                    "Ref": "CloudTrailAccount"
+                },
+                "ctprefix": {
+                    "Ref": "CloudTrailBucketLogPrefix"
+                },
+                "ctbucket": {
+                    "Ref": "CloudTrailBucketName"
+                },
+                "ctregion": {
+                    "Ref": "CloudTrailBucketRegion"
+                }
+            }
+        },
+        "LambdaZipsBucket": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "CopyZips": {
+            "Type": "Custom::CopyZips",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CopyZipsFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "LambdaZipsBucket"
+                },
+                "SourceBucket": {
+                    "Ref": "S3BucketName"
+                },
+                "Prefix": {
+                    "Ref": "S3KeyPrefix"
+                },
+                "Objects": [
+                    "/lambda/UptycsSetupHandler-0.0.1.zip",
+                    "/lambda/UptycsAccountHandler-0.0.1.zip",
+                    "/lambda/UptycsRegistrationHandler-0.0.1.zip",
+                    "/templates/uptycs-bucket-policy.json",
+                    "/templates/log_acct_template.json",
+                    "/templates/member_acct_template.json"
+                ]
+            }
+        },
+        "CopyZipsRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "PermissionsBoundary": {
+                    "Fn::If": [
+                        "PermissionsBoundary",
+                        {
+                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${PermissionsBoundary}"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    }
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:GetObjectTagging"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::${S3BucketName}/${S3KeyPrefix}*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:PutObjectTagging"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::${LambdaZipsBucket}/${S3KeyPrefix}*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CopyZipsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Copies objects from the S3 bucket to a new location.",
+                "Handler": "index.handler",
+                "Runtime": "python3.7",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "CopyZipsRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 240,
+                "Code": {
+                    "ZipFile": "import json\nimport logging\nimport threading\nimport boto3\nimport cfnresponse\ndef copy_objects(source_bucket, dest_bucket, prefix, objects):\n    s3 = boto3.client('s3')\n    for o in objects:\n        key = prefix + o\n        copy_source = {\n            'Bucket': source_bucket,\n            'Key': key\n        }\n        print('copy_source: %s' % copy_source)\n        print('dest_bucket = %s'%dest_bucket)\n        print('key = %s' %key)\n        s3.copy_object(CopySource=copy_source, Bucket=dest_bucket,\n              Key=key)\ndef delete_objects(bucket, prefix, objects):\n    s3 = boto3.client('s3')\n    objects = {'Objects': [{'Key': prefix + o} for o in objects]}\n    s3.delete_objects(Bucket=bucket, Delete=objects)\ndef timeout(event, context):\n    logging.error('Execution is about to time out, sending failure response to CloudFormation')\n    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)\ndef handler(event, context):\n    # make sure we send a failure to CloudFormation if the function\n    # is going to timeout\n    timer = threading.Timer((context.get_remaining_time_in_millis()\n              / 1000.00) - 0.5, timeout, args=[event, context])\n    timer.start()\n    print('Received event: %s' % json.dumps(event))\n    status = cfnresponse.SUCCESS\n    try:\n        source_bucket = event['ResourceProperties']['SourceBucket']\n        dest_bucket = event['ResourceProperties']['DestBucket']\n        prefix = event['ResourceProperties']['Prefix']\n        objects = event['ResourceProperties']['Objects']\n        if event['RequestType'] == 'Delete':\n            delete_objects(dest_bucket, prefix, objects)\n        else:\n            copy_objects(source_bucket, dest_bucket, prefix, objects)\n    except Exception as e:\n        logging.error('Exception: %s' % e, exc_info=True)\n        status = cfnresponse.FAILED\n    finally:\n        timer.cancel()\n        cfnresponse.send(event, context, status, {}, None)\n"
+                }
+            }
+        },
+        "UptycsAccountSNS": {
+            "Type": "AWS::SNS::Topic"
+        },
+        "UptycsAccountFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "PermissionsBoundary": {
+                    "Fn::If": [
+                        "PermissionsBoundary",
+                        {
+                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${PermissionsBoundary}"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "Account_Operations",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "StackSetInstanceOperations",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:CreateStackInstances",
+                                        "cloudformation:ListStackInstances",
+                                        "cloudformation:ListStackSetOperations",
+                                        "cloudformation:DescribeStackSetOperation",
+                                        "cloudformation:DeleteStackInstances",
+                                        "cloudformation:DescribeStackSet"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stackset/Uptycs*"
+                                    }
+                                },
+                                {
+                                    "Sid": "ManageSecret",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:GetSecretValue",
+                                        "secretsmanager:DescribeSecret"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "UptycsSecretName"
+                                    }
+                                },
+                                {
+                                    "Sid": "SNSOperations",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Ref": "UptycsAccountSNS"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    },
+                    {
+                        "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AWSOrganizationsReadOnlyAccess"
+                    }
+                ]
+            }
+        },
+        "CreateAccountRule": {
+            "Type": "AWS::Events::Rule",
+            "Properties": {
+                "Description": "Event rule for CreateManagedAccount events",
+                "EventPattern": {
+                    "source": [
+                        "aws.organizations"
+                    ],
+                    "detail-type": [
+                        "AWS API Call via CloudTrail"
+                    ],
+                    "detail": {
+                        "eventSource": [
+                            "organizations.amazonaws.com"
+                        ],
+                        "eventName": [
+                            "CreateManagedAccount",
+                            "UpdateManagedAccount"
+                        ]
+                    }
+                },
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "UptycsAccountFunction",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "AccountFunctionTarget"
+                    }
+                ]
+            }
+        },
+        "UptycsAccountFunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": "CopyZips",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Sub": "${S3KeyPrefix}/lambda/UptycsAccountHandler-0.0.1.zip"
+                    }
+                },
+                "Handler": "uptycs_account_handler.lambda_handler",
+                "Runtime": "python3.7",
+                "Timeout": 500,
+                "Environment": {
+                    "Variables": {
+                        "UPTYCS_ROLE_NAME": {
+                            "Ref": "UptycsRoleName"
+                        },
+                        "UPTYCS_ACCOUNT_NUMBER": {
+                            "Ref": "UptycsAccountId"
+                        },
+                        "PERMISSIONS_BOUNDARY": {
+                            "Ref": "PermissionsBoundary"
+                        },
+                        "UPTYCS_STACKSET_NAME": {
+                            "Ref": "UptycsStackSetName"
+                        },
+                        "UPTYCS_SECRET_STORE": {
+                            "Ref": "UptycsSecretName"
+                        },
+                        "uptycs_account_topic": {
+                            "Ref": "UptycsAccountSNS"
+                        }
+                    }
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "UptycsAccountFunctionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "UptycsAccountSNSLambdaPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "UptycsAccountFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "sns.amazonaws.com",
+                "SourceArn": {
+                    "Ref": "UptycsAccountSNS"
+                }
+            }
+        },
+        "UptycsAccountSNSSubscription": {
+            "Type": "AWS::SNS::Subscription",
+            "Properties": {
+                "Endpoint": {
+                    "Fn::GetAtt": [
+                        "UptycsAccountFunction",
+                        "Arn"
+                    ]
+                },
+                "Protocol": "lambda",
+                "TopicArn": {
+                    "Ref": "UptycsAccountSNS"
+                }
+            }
+        },
+        "UptycsDLQ": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "MessageRetentionPeriod": 345600
+            }
+        },
+        "UptycsSetupCustomResource": {
+            "Type": "Custom::UptycsSetupCustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "UptycsSetupLambdaFunction",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "UptycsSetupLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": "CopyZips",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                {
+                                    "Ref": "S3KeyPrefix"
+                                },
+                                "/lambda/UptycsSetupHandler-0.0.1.zip"
+                            ]
+                        ]
+                    }
+                },
+                "Handler": "uptycs_setup.lambda_handler",
+                "Runtime": "python3.7",
+                "Timeout": 500,
+                "Environment": {
+                    "Variables": {
+                        "PERMISSIONS_BOUNDARY": {
+                            "Ref": "PermissionsBoundary"
+                        },
+                        "UPTYCS_ROLE_NAME": {
+                            "Ref": "UptycsRoleName"
+                        },
+                        "UPTYCS_POLICY_FILE": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Ref": "S3KeyPrefix"
+                                    },
+                                    "/templates/uptycs-bucket-policy.json"
+                                ]
+                            ]
+                        },
+                        "UPTYCS_S3_BUCKET": {
+                            "Ref": "LambdaZipsBucket"
+                        },
+                        "UPTYCS_SECRET_STORE": {
+                            "Ref": "UptycsSecretName"
+                        },
+                        "UPTYCS_ACCOUNT_MGT_TOPIC": {
+                            "Ref": "UptycsAccountSNS"
+                        },
+                        "EXISTING_ACCOUNTS": {
+                            "Ref": "ExistingAccounts"
+                        },
+                        "UPTYCS_MEMBER_ACCOUNT_TEMPLATE_NAME": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Ref": "S3KeyPrefix"
+                                    },
+                                    "/templates/member_acct_template.json"
+                                ]
+                            ]
+                        },
+                        "UPTYCS_LOG_ACCOUNT_TEMPLATE_NAME": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    {
+                                        "Ref": "S3KeyPrefix"
+                                    },
+                                    "/templates/log_acct_template.json"
+                                ]
+                            ]
+                        },
+                        "UPTYCS_ACCOUNT_NUMBER": {
+                            "Ref": "UptycsAccountId"
+                        },
+                        "UPTYCS_STACKSET_NAME": {
+                            "Ref": "UptycsStackSetName"
+                        },
+                        "CLOUDTRAIL_BUCKET_NAME": {
+                            "Ref": "CloudTrailBucketName"
+                        },
+                        "KMS_KEY_ARN": {
+                            "Ref": "KMSKeyArn"
+                        }
+                    }
+                },
+                "Role": {
+                    "Fn::GetAtt": [
+                        "UptycsSetupFunctionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "UptycsSetupFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Metadata": {
+                "cfn-lint": {
+                    "config": {
+                        "ignore_checks": [
+                            "EIAMPolicyWildcardResource"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "PermissionsBoundary": {
+                    "Fn::If": [
+                        "PermissionsBoundary",
+                        {
+                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/${PermissionsBoundary}"
+                        },
+                        {
+                            "Ref": "AWS::NoValue"
+                        }
+                    ]
+                },
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "Setup_Operations",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "StackOperations",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:ListStacks",
+                                        "cloudformation:DescribeStacks",
+                                        "cloudformation:DeleteStack",
+                                        "cloudformation:CreateStack"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:cloudformation:*:*:stack/*"
+                                    }
+                                },
+                                {
+                                    "Sid": "StackSetInstance",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudformation:DescribeStackInstance",
+                                        "cloudformation:UpdateStackInstances",
+                                        "cloudformation:CreateStackInstances",
+                                        "cloudformation:DeleteStackInstances",
+                                        "cloudformation:ListStackInstances",
+                                        "cloudformation:UpdateStackSet",
+                                        "cloudformation:CreateStackSet",
+                                        "cloudformation:DeleteStackSet",
+                                        "cloudformation:DescribeStackSetOperation",
+                                        "cloudformation:DescribeStackSet"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stackset/*:*"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:cloudformation:*:*:type/resource/*"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:cloudformation:*:*:stackset-target/*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "S3Ops",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:ListBucket",
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:s3:::${LambdaZipsBucket}/${S3KeyPrefix}/*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "SNSOps",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "UptycsAccountSNS"
+                                    }
+                                },
+                                {
+                                    "Sid": "PassRole",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/AWSControlTowerStackSetRole"
+                                    }
+                                },
+                                {
+                                    "Sid": "ManageSecret",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "secretsmanager:GetSecretValue",
+                                        "secretsmanager:DescribeSecret"
+                                    ],
+                                    "Resource": {
+                                        "Ref": "UptycsSecretName"
+                                    }
+                                },
+                                {
+                                    "Sid": "OrgAccounts",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "organizations:ListAccounts",
+                                        "organizations:DescribeAccount",
+                                        "organizations:DescribeOrganization",
+                                        "organizations:DescribeOrganizationalUnit",
+                                        "organizations:ListParents"
+                                    ],
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Sid": "GetRole",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:GetRole"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*"
+                                    }
+                                },
+                                {
+                                    "Sid": "CreateRole",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:GetRole",
+                                        "iam:CreateRole",
+                                        "iam:DetachRolePolicy",
+                                        "iam:DeleteRolePolicy",
+                                        "iam:PutRolePolicy",
+                                        "iam:GetRolePolicy",
+                                        "iam:AttachRolePolicy"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${UptycsRoleName}"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                    }
+                ]
+            }
+        }
+    }
+}
