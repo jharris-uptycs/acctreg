@@ -44,7 +44,7 @@ git clone https://github.com/jharris-uptycs/acctreg.git
 ```
 
 
-<img src='./images/uptycs-api-creds.png' width='600'>
+<img src='./images/git_clone.png' width='600'>
 
 
 ### Upload the API Credentials File
