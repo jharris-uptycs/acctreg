@@ -30,7 +30,7 @@ import botocore
 import uuid
 
 TEMPLATE_FILE = "./cloudformation/uptycs-cnapp.json"
-STACK_NAME = 'Uptycs-Integration-Setup-Stack1'
+STACK_NAME = 'Uptycs-Integration-Setup-Stack'
 
 
 def generate_uuid():
